@@ -13,6 +13,19 @@ Versioning: SemVer, computed from git history — never hand-edited here.
 
 All notable changes to this project are documented in this file.
 
+## [0.2.2] - 2026-07-24
+
+Second patch for the show — a layout-robustness fix on top of 0.2.1.
+
+### Fixed
+
+- Panels can no longer shrink into an ungrabbable sliver. A panel whose share
+  dropped below its usable minimum — from a shrunk window or repeated
+  rearranging — is now held to that minimum when drawn, so it stays big enough
+  to grab, move, and close. Touching its splitter saves the corrected size.
+  (Layout → Reset to Default Layout remains the escape hatch for a layout
+  that's already wedged.)
+
 ## [0.2.1] - 2026-07-23
 
 First patch on the 0.2 alpha — a layout-stability fix found live during EAA
