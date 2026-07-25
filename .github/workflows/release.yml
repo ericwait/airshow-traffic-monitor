@@ -98,7 +98,7 @@ jobs:
           npx electron-builder --publish never -c.extraMetadata.version="$VERSION"
 
       - name: Upload installers
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: installers-${{ matrix.os }}
           # electron-builder writes to dist/. Only ship user-facing installers;
