@@ -13,6 +13,12 @@ Versioning: SemVer, computed from git history — never hand-edited here.
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Normalized file line endings to CRLF for Windows development compatibility.
+
 ## [0.2.2] - 2026-07-24
 
 Second patch for the show — a layout-robustness fix on top of 0.2.1.
