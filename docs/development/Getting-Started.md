@@ -3,12 +3,13 @@
 # Getting started
 
 This walkthrough assumes you know nothing about Electron, Node, or this repo.
-Follow it top to bottom on a fresh macOS machine and you will end at a running app: ATC audio on the left, flight tracking top-right, live video bottom-right.
-Windows and Linux get a short parity note below.
+Follow it top to bottom on a fresh machine (macOS or Windows) and you will end at a running app: ATC audio on the left, flight tracking top-right, live video bottom-right.
 
-## Prerequisites (macOS via Homebrew)
+## Prerequisites
 
 You need four tools: git, Git LFS, Node.js, and the `just` task runner.
+
+**macOS (via Homebrew):**
 Install [Homebrew](https://brew.sh) first if you don't have it, then:
 
 ```bash
@@ -16,6 +17,19 @@ brew install git git-lfs node just
 xcode-select --install   # skip if already installed; safe to re-run — electron-builder wants it for macOS packaging
 ```
 
+**Windows (via winget):**
+```powershell
+winget install Git.Git GitHub.GitLFS OpenJS.NodeJS Casey.Just
+```
+
+**Linux (Debian/Ubuntu):**
+```bash
+sudo apt install git git-lfs nodejs npm
+# Install `just` from https://github.com/casey/just/releases or your distro
+```
+A headless machine needs `xvfb` to run `just e2e` (CI does this automatically).
+
+**For all platforms:**
 Git LFS must be activated once per machine after install — this teaches git to fetch the large binary assets this repo tracks:
 
 ```bash
@@ -30,14 +44,8 @@ just --version
 git lfs version
 ```
 
-The repo's `package.json` only floors Node at 20.19, but a plain `brew install node` gives you the current major (22+ as of this writing), so you'll clear the floor with room to spare.
-If `node --version` shows something surprisingly old, `brew upgrade node` or use a version manager.
-
-**Windows:** `winget install Git.Git GitHub.GitLFS OpenJS.NodeJS Casey.Just`, then `git lfs install`.
-`just dev` works the same afterward.
-
-**Linux (Debian/Ubuntu):** `sudo apt install git git-lfs nodejs npm`, install `just` from its [releases](https://github.com/casey/just) or your distro, then `git lfs install`.
-A headless machine needs `xvfb` to run `just e2e` (CI does this automatically).
+The repo's `package.json` floors Node at 20.19, but a plain install gives you the current major (22+ as of this writing), so you'll clear the floor with room to spare.
+If `node --version` shows something surprisingly old, update node or use a version manager.
 
 ## Clone and run
 
@@ -50,6 +58,9 @@ just dev
 `just dev` is idempotent — safe to run any time.
 On the first run it installs dependencies with `npm ci`, which also downloads the Electron binary (~100 MB — give it a couple of minutes), then starts the electron-vite dev server and opens the app window.
 Every later run skips straight to the dev server, typically live in a few seconds.
+
+> [!TIP]
+> If your first `just dev` crashes with an `Error: Electron uninstall` stack trace, your `npm` configuration likely blocked the binary download. See the Troubleshooting section below for the one-line fix.
 
 `just up` is the production sibling: it builds all three processes and previews the packaged app, serving the renderer from a loopback HTTP server (`http://127.0.0.1:<port>`) instead of the dev server.
 This is the build the YouTube grid needs to be judged fairly against — see § What you should see.
@@ -152,8 +163,8 @@ If you must run a raw command, prefix it: `env -u ELECTRON_RUN_AS_NODE npm run d
 You're likely behind a proxy or offline.
 The binary is fetched by Electron's postinstall from GitHub releases; set `HTTP_PROXY`/`HTTPS_PROXY` if you're behind a corporate proxy, or set `ELECTRON_MIRROR` to an internal mirror, then re-run `npm ci`.
 
-**`just dev` or `just e2e` fails because `node_modules/electron/dist` is missing, even though `npm ci` reported success with no errors.**
-Some npm setups run an "allow-scripts"-style wrapper (a corporate config, or a personal npm setting) that silently skips packages' postinstall scripts — Electron's binary download is one of those, so it never runs and `npm ci` still exits 0 with nothing downloaded.
+**`just dev` fails with `Error: Electron uninstall` (or `node_modules/electron/dist` is missing).**
+Some npm setups run an "allow-scripts"-style wrapper (a corporate config, or a personal npm setting) that silently skips packages' postinstall scripts — Electron's binary download is one of those, so it never runs and `npm ci` still exits 0 with nothing downloaded. When `just dev` tries to launch the app, it crashes looking for the missing binary.
 Fix it once per install: run `node node_modules/electron/install.js` directly, or approve the `electron` package's scripts through whatever wrapper you're using (for example, an `npm approve-scripts electron`-style command).
 Most machines are unaffected — this only bites setups with that wrapper in place.
 
