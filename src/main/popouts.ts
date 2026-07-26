@@ -150,7 +150,7 @@ export class PopoutManager {
       backgroundColor: '#0b0f14',
       title: `Airshow Video — window ${id}`,
       ...(this.icon ? { icon: this.icon } : {}),
-      autoHideMenuBar: true,
+      autoHideMenuBar: false,
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
         sandbox: false,

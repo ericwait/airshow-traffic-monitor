@@ -120,7 +120,7 @@ function createWindow(): void {
     backgroundColor: '#0b0f14',
     title: 'Airshow Traffic Monitor',
     ...(windowIcon ? { icon: windowIcon } : {}),
-    autoHideMenuBar: true,
+    autoHideMenuBar: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
