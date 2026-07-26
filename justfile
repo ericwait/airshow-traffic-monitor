@@ -15,13 +15,12 @@
 # ==============================================================================
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
+set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
 # ELECTRON_RUN_AS_NODE, if inherited from an IDE-integrated terminal (the VS
 # Code family exports it), forces Electron to launch as a plain Node process —
 # no app, no window, and Playwright fails with "bad option:
-# --remote-debugging-port". Strip it from every recipe that launches Electron.
-export ELECTRON_RUN_AS_NODE := ""
-
+# --remote-debugging-port". We must strip it in the recipes that launch Electron.
 # List every recipe with its doc comment (run with no args).
 default:
     @just --list
@@ -31,21 +30,43 @@ default:
 # electron-vite dev server with HMR and launches the app against it.
 #
 # Bootstrap and run the dev app (idempotent): install if needed, then electron-vite dev.
+[unix]
 dev:
     #!/usr/bin/env bash
     set -euo pipefail
+    unset ELECTRON_RUN_AS_NODE
     if [ ! -d node_modules ]; then
         echo "node_modules missing — running npm ci (this also downloads Electron)…" >&2
         npm ci
     fi
     exec npm run dev
 
+# Bootstrap and run the dev app (idempotent): install if needed, then electron-vite dev.
+[windows]
+dev:
+    #!powershell.exe
+    if (Test-Path Env:\ELECTRON_RUN_AS_NODE) { Remove-Item Env:\ELECTRON_RUN_AS_NODE }
+    if (!(Test-Path "node_modules")) {
+        Write-Host "node_modules missing — running npm ci (this also downloads Electron)…"
+        npm ci
+    }
+    npm run dev
+
 # CONTRACT: preview the PRODUCTION build — build all three processes, then run
 # the packaged renderer over the app:// scheme (not the dev server). The
 # lighter, prod-fidelity sibling of `dev`.
 #
 # Build and preview the production app (electron-vite preview).
+[unix]
 up:
+    unset ELECTRON_RUN_AS_NODE
+    npm run build
+    npm run preview
+
+[windows]
+up:
+    #!powershell.exe
+    if (Test-Path Env:\ELECTRON_RUN_AS_NODE) { Remove-Item Env:\ELECTRON_RUN_AS_NODE }
     npm run build
     npm run preview
 
@@ -62,6 +83,7 @@ down:
 # typed confirmation before touching anything — the friction is deliberate.
 #
 # DESTRUCTIVE: remove node_modules/out/dist + dev userData (asks for typed confirmation).
+[unix]
 reset:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -78,6 +100,25 @@ reset:
     rm -rf "$userdata"
     echo "Reset complete. Run 'just dev' to rebuild." >&2
 
+# DESTRUCTIVE: remove node_modules/out/dist + dev userData (asks for typed confirmation).
+[windows]
+reset:
+    #!powershell.exe
+    $userdata = "$env:APPDATA\airshow-traffic-monitor"
+    Write-Host "This will permanently delete:"
+    Write-Host "  - node_modules/ out/ dist/ (rebuilt by 'just dev')"
+    Write-Host "  - $userdata (dev config, session, FR24 login)"
+    $confirmation = Read-Host "Type 'yes' to continue"
+    if ($confirmation -ne 'yes') {
+        Write-Host "Aborted — no changes made."
+        exit 1
+    }
+    if (Test-Path "node_modules") { Remove-Item -Recurse -Force node_modules }
+    if (Test-Path "out") { Remove-Item -Recurse -Force out }
+    if (Test-Path "dist") { Remove-Item -Recurse -Force dist }
+    if (Test-Path $userdata) { Remove-Item -Recurse -Force $userdata }
+    Write-Host "Reset complete. Run 'just dev' to rebuild."
+
 # CONTRACT: run the full automated unit suite (vitest). Deterministic — no flaky
 # retries, no skip without a reason string. The e2e tier is a separate verb
 # because it needs a built app to launch.
@@ -91,7 +132,16 @@ test:
 # the Playwright config never builds on its own.
 #
 # Build the app, then run the Playwright-Electron e2e smoke.
+[unix]
 e2e:
+    unset ELECTRON_RUN_AS_NODE
+    npm run build
+    npm run e2e
+
+[windows]
+e2e:
+    #!powershell.exe
+    if (Test-Path Env:\ELECTRON_RUN_AS_NODE) { Remove-Item Env:\ELECTRON_RUN_AS_NODE }
     npm run build
     npm run e2e
 
@@ -136,6 +186,7 @@ health:
 # tool is not installed rather than failing cryptically.
 #
 # Print the SemVer computed from git history (GitVersion).
+[unix]
 version:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -149,6 +200,21 @@ version:
         echo "CI computes the authoritative version regardless (see .github/workflows/ci.yml)." >&2
         exit 1
     fi
+
+# Print the SemVer computed from git history (GitVersion).
+[windows]
+version:
+    #!powershell.exe
+    if (Get-Command dotnet-gitversion -ErrorAction SilentlyContinue) {
+        dotnet-gitversion /showvariable SemVer
+    } elseif (Get-Command gitversion -ErrorAction SilentlyContinue) {
+        gitversion /showvariable SemVer
+    } else {
+        Write-Host "GitVersion is not installed locally."
+        Write-Host "Install it with:  winget install GitTools.GitVersion"
+        Write-Host "CI computes the authoritative version regardless (see .github/workflows/ci.yml)."
+        exit 1
+    }
 
 # CONTRACT: build the public documentation site with MkDocs Material, STRICT —
 # a broken internal link, a bad nav entry, or an unresolved anchor fails the
